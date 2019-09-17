@@ -37,7 +37,7 @@
       "SourceS3Path" : {
          "Description" : "S3 Path with CFN stack files",
          "Type" : "String",
-         "Default" : "migrationimmersiondayv2/0_Source_environment"
+         "Default" : "migrationimmersiondayv2/tree/master/0_Source_environment"
        },
 
        "EC2ModelLinux" : {
@@ -51,7 +51,21 @@
          "Type" : "String",
          "AllowedValues" : ["t3.micro", "t3.small", "t3.medium"],
          "Default" : "t3.medium"
-       }
+       },
+       "EC2ModelBastion" : {
+        "Description" : "Model of EC2 Servers in the source environment - Windows Bastion",
+        "Type" : "String",
+        "AllowedValues" : ["t3.micro", "t3.small", "t3.medium"],
+        "Default" : "t3.medium"
+      },
+      "SourceCidrForRDP" : {
+        "Description" : "IP Cidr from which you are likely to RDP into the instances. You can add rules later by modifying the created security groups e.g. 54.32.98.160/32",
+        "Type" : "String",
+        "MinLength" : "9",
+        "MaxLength" : "18",
+        "Default" : "0.0.0.0/0",
+        "AllowedPattern" : "^([0-9]+\\.){3}[0-9]+\\/[0-9]+$"
+      }
 
     },
   
@@ -75,16 +89,35 @@
             "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_BASTION.json"]]},
             "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
             "Parameters" : { 
-               "DomainName":{"Ref":"DomainName"}
+               "DomainName":{"Ref":"DomainName"},
+               "AdminPassword":{"Ref":"AdminPassword"},
+               "bastionSize":{"Ref":"EC2ModelBastion"},
+               "VPCCloud":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.VPCSource"]},
+               "SubnetCloudPublic":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.SubnetSourcePublic"]},
+               "SourceCidrForRDP":{"Ref":"SourceCidrForRDP"}
             }
 
           }
+        },
+        "SOURCEWORDPRESS":{
+          "Type" : "AWS::CloudFormation::Stack",
+          "Properties" : {
+            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_BASTION.json"]]},
+            "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
+            "Parameters" : { 
+               "DomainName":{"Ref":"DomainName"},
+               "OnPremSimVPC":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.VPCSource"]},
+               "OnPremSimSubnet1":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.SubnetSourcePrivate"]},
+               "WEBInstanceType":{"Ref":"EC2ModelLinux"},
+               "DBPassword":{"Ref":"DBRootPassword"},
+               "DBRootPassword":{"Ref":"DBRootPassword"}
+            }
+          }
         }
 
-        
     },
     "Outputs" : {
-        "OnPremSimulatorHYPERVHOST" : { "Value" : { "Fn::GetAtt" : [ "OnPremSimulatorHYPERVHOST", "Outputs.HyperVRDP" ] } }
+        "OnPremSimulatorHYPERVHOST" : { "Value" : { "Fn::GetAtt" : [ "SOURCEBASTION", "Outputs.BastionRDP" ] } }
     }
 
 }
