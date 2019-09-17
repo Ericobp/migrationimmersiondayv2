@@ -88,7 +88,6 @@
             "TemplateURL" : {"Fn::Join":[ "", ["https://",{"Ref":"SourceS3Bucket"},".s3.amazonaws.com/",{"Ref":"SourceS3Path"},"/SOURCE_BASTION.json"]]},
             "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
             "Parameters" : { 
-               "DomainName":{"Ref":"DomainName"},
                "AdminPassword":{"Ref":"AdminPassword"},
                "bastionSize":{"Ref":"EC2ModelBastion"},
                "VPCCloud":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.VPCSource"]},
