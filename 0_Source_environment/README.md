@@ -3,7 +3,9 @@ Temporary placeholder - will be migrate later to another repository -
 
 Placeholder for the cloudformation that creates the source environment to be migrated
 
-Launch the cloudformation using the MASTER.json. (full URL). It will invoke the cloudformation stacks in the correct order to launch the source environment to be migrated.
+Launch the cloudformation using the MASTER.json with the S3 URL bellow. It will invoke the cloudformation stacks in the correct order to launch the source environment to be migrated.
+
+[S3 URL](https://midsourceenv.s3.amazonaws.com/migrationimmersiondayv2/0_Source_environment/MASTER.json)
 
 **MASTER** -> ROOT for clouformation. Invokes SOURCE_NETWORK, SOURCE_BASTION, SOURCE_NOPCOMMERCE, SOURCE_WORDPRESS in the right order
 

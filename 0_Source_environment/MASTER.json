@@ -17,9 +17,8 @@
         "MinLength" : "8",
         "MaxLength" : "18"
       },
-      "DBRootPassword" : {
+      "RootPassword" : {
         "NoEcho": "true",
-        "Default": "wordpress123456",
         "Description" : "SSH password for user 'user'",
         "Type": "String",
         "MinLength": "8",
@@ -31,13 +30,13 @@
       "SourceS3Bucket" : {
         "Description" : "S3 Bucket with CFN stack files",
         "Type" : "String",
-        "Default" : "diegodal"
+        "Default" : "midsourceenv"
       },
 
       "SourceS3Path" : {
          "Description" : "S3 Path with CFN stack files",
          "Type" : "String",
-         "Default" : "migrationimmersiondayv2/tree/master/0_Source_environment"
+         "Default" : "migrationimmersiondayv2/0_Source_environment"
        },
 
        "EC2ModelLinux" : {
@@ -74,7 +73,7 @@
         "SOURCENETWORK":{
           "Type" : "AWS::CloudFormation::Stack",
           "Properties" : {
-            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_NETWORK.json"]]},
+            "TemplateURL" : {"Fn::Join":[ "", ["https://",{"Ref":"SourceS3Bucket"},".s3.amazonaws.com/",{"Ref":"SourceS3Path"},"/SOURCE_NETWORK.json"]]},
             "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
             "Parameters" : { 
                "DomainName":{"Ref":"DomainName"}
@@ -86,7 +85,7 @@
         "SOURCEBASTION":{
           "Type" : "AWS::CloudFormation::Stack",
           "Properties" : {
-            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_BASTION.json"]]},
+            "TemplateURL" : {"Fn::Join":[ "", ["https://",{"Ref":"SourceS3Bucket"},".s3.amazonaws.com/",{"Ref":"SourceS3Path"},"/SOURCE_BASTION.json"]]},
             "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
             "Parameters" : { 
                "DomainName":{"Ref":"DomainName"},
@@ -102,22 +101,22 @@
         "SOURCEWORDPRESS":{
           "Type" : "AWS::CloudFormation::Stack",
           "Properties" : {
-            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_BASTION.json"]]},
+            "TemplateURL" : {"Fn::Join":[ "", ["https://",{"Ref":"SourceS3Bucket"},".s3.amazonaws.com/",{"Ref":"SourceS3Path"},"/SOURCE_WORDPRESS.json"]]},
             "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
             "Parameters" : { 
                "DomainName":{"Ref":"DomainName"},
                "OnPremSimVPC":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.VPCSource"]},
                "OnPremSimSubnet1":{"Fn::GetAtt":["SOURCENETWORK", "Outputs.SubnetSourcePrivate"]},
                "WEBInstanceType":{"Ref":"EC2ModelLinux"},
-               "DBPassword":{"Ref":"DBRootPassword"},
-               "DBRootPassword":{"Ref":"DBRootPassword"}
+               "DBPassword":{"Ref":"RootPassword"},
+               "RootPassword":{"Ref":"RootPassword"}
             }
           }
         }
 
     },
     "Outputs" : {
-        "OnPremSimulatorHYPERVHOST" : { "Value" : { "Fn::GetAtt" : [ "SOURCEBASTION", "Outputs.BastionRDP" ] } }
+        "BastionRDP" : { "Value" : { "Fn::GetAtt" : [ "SOURCEBASTION", "Outputs.BastionRDP" ] } }
     }
 
 }

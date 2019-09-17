@@ -70,7 +70,7 @@
       "ConstraintDescription" : "must contain only alphanumeric characters."
     },
 
-    "DBRootPassword" : {
+    "RootPassword" : {
       "NoEcho": "true",
       "Description" : "MariaDB root password",
       "Type": "String",
@@ -190,7 +190,7 @@
                 "content" : { "Fn::Join" : ["", [
                   "#!/bin/sh\n",
                   "adduser user -g wheel\n",
-                  "echo ",{ "Ref" : "DBRootPassword" }," | passwd user --stdin\n"            
+                  "echo ",{ "Ref" : "RootPassword" }," | passwd user --stdin\n"            
                    ]]},
                 "mode"  : "000500",
                 "owner" : "root",
@@ -252,12 +252,12 @@
           "configure_wordpress" : {
             "commands" : {
               "01_set_mariadb_root_password" : {
-                "command" : { "Fn::Join" : ["", ["mysqladmin -u root password '", { "Ref" : "DBRootPassword" }, "'"]]},
-                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "DBRootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
+                "command" : { "Fn::Join" : ["", ["mysqladmin -u root password '", { "Ref" : "RootPassword" }, "'"]]},
+                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "RootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
               },
               "02_create_database" : {
-                "command" : { "Fn::Join" : ["", ["mysql -u root --password='", { "Ref" : "DBRootPassword" }, "' < /tmp/setup.mariadb"]]},
-                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "DBRootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
+                "command" : { "Fn::Join" : ["", ["mysql -u root --password='", { "Ref" : "RootPassword" }, "' < /tmp/setup.mariadb"]]},
+                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "RootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
               }
             }
           }
@@ -377,7 +377,7 @@
                 "content" : { "Fn::Join" : ["", [
                   "#!/bin/sh\n",
                   "adduser user -g wheel\n",
-                  "echo ",{ "Ref" : "DBRootPassword" }," | passwd user --stdin\n"            
+                  "echo ",{ "Ref" : "RootPassword" }," | passwd user --stdin\n"            
                    ]]},
                 "mode"  : "000500",
                 "owner" : "root",
@@ -449,7 +449,7 @@
               "04_setup_wordpress" : {
                 "command" : { "Fn::Join" : ["", 
                                     [ "/usr/bin/curl -v --data-urlencode 'weblog_title=Migration Immersion Day' --data-urlencode 'user_name=admin' ",
-                                                     "--data-urlencode 'admin_password=",{ "Ref" : "DBRootPassword" },"' --data-urlencode 'admin_password2=",{ "Ref" : "DBRootPassword" },"' ",
+                                                     "--data-urlencode 'admin_password=",{ "Ref" : "RootPassword" },"' --data-urlencode 'admin_password2=",{ "Ref" : "RootPassword" },"' ",
                                                      "--data-urlencode 'admin_email=admin@admin.com' --data-urlencode 'Submit=Install+WordPress' ",
                                                      "http://wordpress-web.",{"Ref": "DomainName"},"/wp-admin/install.php?step=2" ]
                 ]}
