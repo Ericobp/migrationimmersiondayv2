@@ -1,0 +1,90 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",  
+    "Description" : "Master template to create the Migration Immersion Day workshop. Also, you are solely responsible for complying with the license terms for the software downloaded and installed by this template. By creating a stack from this template, you are agreeing to such terms.",
+
+    "Parameters" : {
+      "DomainName" : {
+        "Description" : "The fully qualified name for the source VPC, such as onpremsim.env. The name doesn't need to be publicly resolvable; it will resolve inside your VPC only.",
+        "Type" : "String",
+        "MinLength" : "5",
+        "MaxLength" : "16",
+        "Default" : "onpremsim.env"
+      },
+      "AdminPassword" : {
+        "Description" : "The password for the Bastion Administrator",
+        "NoEcho" : "true",
+        "Type" : "String",
+        "MinLength" : "8",
+        "MaxLength" : "18"
+      },
+      "DBRootPassword" : {
+        "NoEcho": "true",
+        "Default": "wordpress123456",
+        "Description" : "SSH password for user 'user'",
+        "Type": "String",
+        "MinLength": "8",
+        "MaxLength": "41",
+        "AllowedPattern" : "[a-zA-Z0-9]*",
+        "ConstraintDescription" : "must contain only alphanumeric characters."
+      },
+
+      "SourceS3Bucket" : {
+        "Description" : "S3 Bucket with CFN stack files",
+        "Type" : "String",
+        "Default" : "diegodal"
+      },
+
+      "SourceS3Path" : {
+         "Description" : "S3 Path with CFN stack files",
+         "Type" : "String",
+         "Default" : "migrationimmersiondayv2/0_Source_environment"
+       },
+
+       "EC2ModelLinux" : {
+         "Description" : "Model of EC2 Servers in the source environment - Linux",
+         "Type" : "String",
+         "AllowedValues" : ["t3.nano", "t3.micro", "t3.small"],
+         "Default" : "t3.micro"
+       },
+       "EC2ModelWindows" : {
+         "Description" : "Model of EC2 Servers in the source environment - Windows",
+         "Type" : "String",
+         "AllowedValues" : ["t3.micro", "t3.small", "t3.medium"],
+         "Default" : "t3.medium"
+       }
+
+    },
+  
+    "Resources" : {
+
+        "SOURCENETWORK":{
+          "Type" : "AWS::CloudFormation::Stack",
+          "Properties" : {
+            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_NETWORK.json"]]},
+            "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
+            "Parameters" : { 
+               "DomainName":{"Ref":"DomainName"}
+            }
+
+          }
+        },
+
+        "SOURCEBASTION":{
+          "Type" : "AWS::CloudFormation::Stack",
+          "Properties" : {
+            "TemplateURL" : {"Fn::Join":[ "/", ["https://github.com",{"Ref":"SourceS3Bucket"},{"Ref":"SourceS3Path"},"SOURCE_BASTION.json"]]},
+            "Tags" : [ {"Key" : "Env" , "Value" : "MID-SOURCE"}, {"Key" : "Stack" , "Value" : "SOURCENETWORK"} ],
+            "Parameters" : { 
+               "DomainName":{"Ref":"DomainName"}
+            }
+
+          }
+        }
+
+        
+    },
+    "Outputs" : {
+        "OnPremSimulatorHYPERVHOST" : { "Value" : { "Fn::GetAtt" : [ "OnPremSimulatorHYPERVHOST", "Outputs.HyperVRDP" ] } }
+    }
+
+}

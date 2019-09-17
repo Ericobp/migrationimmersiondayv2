@@ -1,0 +1,194 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",  
+  "Description" : "NOPCOMMERCE host template for the AWS Migration Immersion Day. Also, you are solely responsible for complying with the license terms for the software downloaded and installed by this template. By creating a stack from this template, you are agreeing to such terms.",
+
+  "Parameters" : {
+    "AdminPassword" : {
+      "Description" : "The password for the default administrative user, Admin. ",
+      "NoEcho" : "true",
+      "Type" : "String",
+      "MinLength" : "8",
+      "MaxLength" : "18"
+    },
+    "EC2Size" : {
+      "Description" : "ec2 instance size for the Nopcommerce host",
+      "Type" : "String",
+      "AllowedValues" : ["t3.medium", "t3.small", "t3.large"],
+      "Default" : "t3.medium"
+    },
+    "VPCCloud" : {
+      "Description" : "VPC to place Nopcommerce Host. Preferred is Target Cloud Environment",
+      "Type" : "AWS::EC2::VPC::Id"
+    },
+    "SubnetCloudPublic" : {
+      "Description" : "Public Subnet to place Nopcommerce Host. Preferred is private subnet",
+      "Type" : "AWS::EC2::Subnet::Id"
+    },
+    
+    "SourceCidrForRDP" : {
+      "Description" : "IP Cidr from which you are likely to RDP into the instances. You can add rules later by modifying the created security groups e.g. 54.32.98.160/32",
+      "Type" : "String",
+      "MinLength" : "9",
+      "MaxLength" : "18",
+      "Default" : "0.0.0.0/0",
+      "AllowedPattern" : "^([0-9]+\\.){3}[0-9]+\\/[0-9]+$"
+    },
+
+    "WindowsLastestAmiID" :
+    {
+      "Description" : "The latest AMI ID for Windows 2019 from Amazon",
+      "Type" : "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Default" : "/aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base"
+    }
+
+  },
+
+
+  "Resources" : {
+    "NOPCommerceEIP" : {
+      "Type" : "AWS::EC2::EIP",
+      "Properties" : {
+        "InstanceId" : { "Ref" : "NOPCommerce" }
+      }
+    },
+
+    "NOPCommerceSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable RDP",
+        "VpcId" : {"Ref" : "VPCCloud"},
+        "SecurityGroupIngress" : [
+          {"IpProtocol" : "tcp", "FromPort" : 3389, "ToPort" : 3389, "CidrIp" : { "Ref" : "SourceCidrForRDP" }}
+        ]
+      }
+    },
+     
+    "MIDNOPCommerce": {
+          "Type" : "AWS::EC2::Instance",
+          "Metadata": {
+            "AWS::CloudFormation::Init": {
+              "configSets" : {
+                "NOPCommerce_install" : ["install_cfn", "install_apps"]
+              },
+              "install_cfn": {
+                "files": {
+                  "c:\\cfn\\cfn-hup.conf": {
+                    "content": {
+                      "Fn::Join": ["",["[main]\n","stack=",{"Ref": "AWS::StackId"},"\n","region=",{"Ref": "AWS::Region"},"\n"]]
+                    }
+                  },
+
+                  "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf": {
+                    "content": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "[cfn-auto-reloader-hook]\n",
+                          "triggers=post.update\n",
+                          "path=Resources.MIDNOPCommerce.Metadata.AWS::CloudFormation::Init\n",
+                          "action=cfn-init.exe -v -s ",
+                          {"Ref": "AWS::StackId"},
+                          " -r MIDNOPCommerce",
+                          " --configsets NOPCommerce_install",
+                          " --region ",
+                          {"Ref": "AWS::Region"},
+                          "\n"
+                        ]
+                      ]
+                    }
+                  }
+                },
+                "services": {
+                  "windows": {
+                    "cfn-hup": {
+                      "enabled": "true",
+                      "ensureRunning": "true",
+                      "files": [
+                        "c:\\cfn\\cfn-hup.conf",
+                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                      ]
+                    }
+                  }
+                }
+              },
+              "install_apps": {
+                "files": {
+                  "c:\\cfn\\scripts\\installchrome.ps1": {
+                    "content": {
+                      "Fn::Join": ["",[
+                        "$Path = $env:TEMP; $Installer = \"chrome_installer.exe\"; Invoke-WebRequest \"http://dl.google.com/chrome/install/375.126/chrome_installer.exe\" -OutFile $Path\\$Installer; Start-Process -FilePath $Path\\$Installer -Args \"/silent /install\" -Verb RunAs -Wait; Remove-Item $Path\\$Installer"
+                      ]]
+                    }
+                  },
+                  "c:\\cfn\\scripts\\installputty.ps1": {
+                    "content": {
+                      "Fn::Join": ["",[
+                        "Invoke-WebRequest \"https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.72-installer.msi\" -OutFile c:\\putty.msi; Start-Process msiexec.exe -ArgumentList '/i c:\\putty.msi /q' -Verb RunAs -Wait; Remove-Item c:\\putty.msi\n",
+                        "New-Item -ItemType SymbolicLink -Path 'C:\\Users\\Administrator\\Desktop\\' -name 'Putty' -Value 'C:\\Program Files\\PuTTY\\putty.exe'"
+                      ]]
+                    }
+                  },
+                  "c:\\cfn\\scripts\\installpython.ps1": {
+                    "content": {
+                      "Fn::Join": ["",[
+                        "Invoke-WebRequest \"https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe\" -OutFile c:\\python.exe; Start-Process c:\\python.exe -ArgumentList '/quiet' -Verb RunAs -Wait; Remove-Item c:\\python.exe"
+                      ]]
+                    }
+                  }
+                },
+                "commands": {
+                  "1-installchrome": {
+                    "command": "powershell.exe c:\\cfn\\scripts\\installchrome.ps1",
+                    "waitAfterCompletion": "5"
+                  },
+                  "2-installputty": {
+                    "command": "powershell.exe c:\\cfn\\scripts\\installputty.ps1",
+                    "waitAfterCompletion": "5"
+                  },
+                  "3-installpython": {
+                    "command": "powershell.exe c:\\cfn\\scripts\\installpython.ps1",
+                    "waitAfterCompletion": "5"
+                  },
+                  "4-signal": {
+                    "command": {"Fn::Join": ["", ["cfn-signal.exe -e %ERRORLEVEL% --stack ",{"Ref":"AWS::StackId"}," --resource MIDNOPCommerce --region ", {"Ref": "AWS::Region"}]]}
+                  }
+                }
+              }
+            }
+        },
+          "Properties": {
+            "InstanceType" : { "Ref" : "NOPCommerceSize" },
+            "ImageId" : { "Ref" : "WindowsLastestAmiID" },
+            "NetworkInterfaces" : [{
+              "GroupSet"                 : [{ "Ref" : "NOPCommerceSecurityGroup" }],
+              "AssociatePublicIpAddress" : true,
+              "DeviceIndex"              : "0",
+              "DeleteOnTermination"      : true,
+              "SubnetId"                 : { "Ref" : "SubnetCloudPublic" }
+            }],
+            "Tags" : [ {"Key" : "Environment", "Value" : "Source"}, {"Key" : "Name", "Value" : "MID-NOPCommerce" } ],
+            "UserData": { "Fn::Base64": {"Fn::Join": ["",
+              [
+                "<powershell>\n",
+                "net user Administrator \"",{"Ref" : "AdminPassword"},"\" \n",
+                "cfn-init.exe -v -s ",{"Ref": "AWS::StackId"}," -r MIDNOPCommerce --configsets NOPCommerce_install --region ",{"Ref": "AWS::Region"},"\n",
+                "Rename-Computer -NewName \"NOPCommerce\" -Restart -Confirm -Force  \n",
+                "Register-DnsClient\n",
+                "</powershell>"
+              ]
+             ]
+             }
+            }
+          }
+    
+    }
+  
+  },
+
+  "Outputs" : {
+        "NOPCommerceRDP" : {
+          "Value" : { "Ref" : "NOPCommerceEIP" },
+          "Description" : "NOPCommerce Host RDP connection. Please retrieve Administrator password of the instance to be able to RDP"
+        }
+  }
+}
