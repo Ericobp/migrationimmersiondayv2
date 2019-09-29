@@ -16,3 +16,5 @@ Launch the cloudformation using the MASTER.json with the S3 URL bellow. It will 
 **SOURCE_NOPCOMMERCE** -> 2 stack Windows (.NET Core + SQLServer) running NOPCOMMERCE. Launch in the PRIVATE network
 
 **SOURCE_WORDPRESS** -> 2 stack Linux (PHP + mariaDB) running Wordpress. Launch in the PRIVATE network
+
+**SOURCE_OFBIZ** -> 2 stack Linux (java + postgres) running OFBiz ERP. Launch in the PRIVATE network

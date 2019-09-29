@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template WordPress: WordPress is web software you can use to create a beautiful website or blog. This template installs WordPress with a remote MariaDB database for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+  "Description" : "AWS CloudFormation Sample Template OFBiz: OFBiz is Java ERP. This installation uses a remote Postgres server . It demonstrates using the AWS CloudFormation bootstrap scripts to deploy OFBiz. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
 
   "Parameters" : {
 
@@ -21,12 +21,12 @@
     },
 
     "OnPremSimVPC" : {
-        "Description" : "VPC to place Wordpress.",
+        "Description" : "VPC to place OFBiz.",
         "Type" : "AWS::EC2::VPC::Id"
     },
   
     "OnPremSimSubnet1" : {
-       "Description" : "Private Subnet to place Wordpress.",
+       "Description" : "Private Subnet to place OFBiz.",
        "Type" : "AWS::EC2::Subnet::Id"
     },
 
@@ -40,19 +40,9 @@
       "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
     },
 
-    "DBName" : {
-      "Default": "wordpressdb",
-      "Description" : "The WordPress database name",
-      "Type": "String",
-      "MinLength": "1",
-      "MaxLength": "64",
-      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
-      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
-    },
-
     "DBUser" : {
-      "Default": "wordpress",
-      "Description" : "The WordPress database admin account username",
+      "Default": "ofbiz",
+      "Description" : "The OFBiz database admin account username",
       "Type": "String",
       "MinLength": "1",
       "MaxLength": "16",
@@ -62,17 +52,17 @@
 
     "DBPassword" : {
       "NoEcho": "true",
-      "Description" : "The WordPress database admin account password",
+      "Default": "ofbiz",
+      "Description" : "The OFBiz database admin account password",
       "Type": "String",
-      "MinLength": "8",
+      "MinLength": "5",
       "MaxLength": "41",
-      "AllowedPattern" : "[a-zA-Z0-9]*",
       "ConstraintDescription" : "must contain only alphanumeric characters."
     },
 
     "RootPassword" : {
       "NoEcho": "true",
-      "Description" : "MariaDB root password",
+      "Description" : "server root password",
       "Type": "String",
       "MinLength": "8",
       "MaxLength": "41",
@@ -96,6 +86,9 @@
         "GroupDescription" : "Enable HTTP access via port 80 locked down to the load balancer + SSH access",
         "SecurityGroupIngress" : [
           {"IpProtocol" : "tcp", "FromPort" : 80, "ToPort" : 80, "CidrIp" : "192.168.0.0/16"},
+          {"IpProtocol" : "tcp", "FromPort" : 443, "ToPort" : 443, "CidrIp" : "192.168.0.0/16"},
+          {"IpProtocol" : "tcp", "FromPort" : 8080, "ToPort" : 8080, "CidrIp" : "192.168.0.0/16"},
+          {"IpProtocol" : "tcp", "FromPort" : 8443, "ToPort" : 8443, "CidrIp" : "192.168.0.0/16"},
           {"IpProtocol" : "tcp", "FromPort" : 22, "ToPort" : 22, "CidrIp" : { "Ref" : "SSHLocation"}},
           {"IpProtocol" : "icmp", "FromPort" : 8, "ToPort" : -1, "CidrIp" : "192.168.0.0/16" }
         ]
@@ -107,7 +100,7 @@
         "VpcId": { "Ref": "OnPremSimVPC" },
         "GroupDescription" : "Enable mariadb access via port 3306 locked down to the load balancer + SSH access",
         "SecurityGroupIngress" : [
-          {"IpProtocol" : "tcp", "FromPort" : 3306, "ToPort" : 3306, "CidrIp" : "192.168.0.0/16"},
+          {"IpProtocol" : "tcp", "FromPort" : 5432, "ToPort" : 5432, "CidrIp" : "192.168.0.0/16"},
           {"IpProtocol" : "tcp", "FromPort" : 22, "ToPort" : 22, "CidrIp" : { "Ref" : "SSHLocation"}},
           {"IpProtocol" : "icmp", "FromPort" : 8, "ToPort" : -1, "CidrIp" : "192.168.0.0/16" }
         ]
@@ -119,7 +112,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "wordpress_install" : ["install_cfn", "register_dns", "setup_ssh", "install_wordpress", "configure_wordpress" ]
+            "OFBiz_install" : ["install_cfn", "register_dns", "setup_ssh", "install_OFBiz", "configure_OFBiz" ]
           },
           "install_cfn" : {
             "files": {
@@ -141,7 +134,7 @@
                   "action=/opt/aws/bin/cfn-init -v ",
                           "         --stack ", { "Ref" : "AWS::StackName" },
                           "         --resource DBServer ",
-                          "         --configsets wordpress_install ",
+                          "         --configsets OFBiz_install ",
                           "         --region ", { "Ref" : "AWS::Region" }, "\n"
                 ]]},          
                 "mode"  : "000400",
@@ -220,48 +213,54 @@
             }
           },
 
-          "install_wordpress" : {
+          "install_OFBiz" : {
             "packages" : {
               "yum" : {
-                "mariadb"        : [],
-                "mariadb-server" : [],
-                "mariadb-devel"  : [],
-                "mariadb-libs"   : [],
-                "python3"        : []
+                "postgresql-server" : [],
+                "python3"           : []
               }
             },
-            "sources" : {
-              "/var/www/html" : "http://wordpress.org/latest.tar.gz"
-            },
-            "files" : {
-              "/tmp/setup.mariadb" : {
-                "content" : { "Fn::Join" : ["", [
-                  "CREATE DATABASE ", { "Ref" : "DBName" }, ";\n",
-                  "CREATE USER '", { "Ref" : "DBUser" }, "'@'%' IDENTIFIED BY '", { "Ref" : "DBPassword" }, "';\n",
-                  "GRANT ALL ON ", { "Ref" : "DBName" }, ".* TO '", { "Ref" : "DBUser" }, "'@'%';\n",
-                  "FLUSH PRIVILEGES;\n"
-                ]]},
-                "mode"  : "000400",
-                "owner" : "root",
-                "group" : "root"
+            "commands" : {
+              "01_init_postgres" : {
+                "command" : "/usr/bin/postgresql-setup --initdb"
+              },
+              "02_setup_postgres" : {
+                "command" : "sed -i 's/#listen_addresses/listen_addresses/g' /var/lib/pgsql/data/postgresql.conf"
+              },
+              "03_setup_postgres" : {
+                "command" : "sed -i 's/localhost/*/g' /var/lib/pgsql/data/postgresql.conf"
+              },
+              "04_postgres_remote" : {
+                "command" : "echo 'host all ofbiz all password' >> /var/lib/pgsql/data/pg_hba.conf"
               }
             },
             "services" : {
               "sysvinit" : {
-                "mariadb" : { "enabled" : "true", "ensureRunning" : "true" }
+                "postgresql" : { "enabled" : "true", "ensureRunning" : "true" }
               }
             }
           },
 
-          "configure_wordpress" : {
+          "configure_OFBiz" : {
+            "files" : {
+              "/tmp/setup_postgres.sh" : {
+                "content" : { "Fn::Join" : ["", [
+                  "sudo -u postgres psql -c \"CREATE USER ofbiz WITH ENCRYPTED PASSWORD 'ofbiz';\"\n",
+                  "sudo -u postgres psql -c \"CREATE DATABASE ofbiz;\"\n",
+                  "sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE ofbiz TO ofbiz;\"\n",
+                  "sudo -u postgres psql -c \"CREATE DATABASE ofbizolap;\"\n",
+                  "sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE ofbizolap TO ofbiz;\"\n",
+                  "sudo -u postgres psql -c \"CREATE DATABASE ofbiztenant;\"\n",
+                  "sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE ofbiztenant TO ofbiz;\"\n"
+                ]]},
+                "mode"  : "000500",
+                "owner" : "root",
+                "group" : "root"
+              }
+            },
             "commands" : {
-              "01_set_mariadb_root_password" : {
-                "command" : { "Fn::Join" : ["", ["mysqladmin -u root password '", { "Ref" : "RootPassword" }, "'"]]},
-                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "RootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
-              },
-              "02_create_database" : {
-                "command" : { "Fn::Join" : ["", ["mysql -u root --password='", { "Ref" : "RootPassword" }, "' < /tmp/setup.mariadb"]]},
-                "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "RootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
+              "01_configure_OFBiz" : {
+                "command" : "/tmp/setup_postgres.sh"
               }
             }
           }
@@ -271,7 +270,7 @@
       "Properties": {
         "ImageId" : { "Ref" : "AWSRegionArch2AMI" },
         "InstanceType"   : { "Ref" : "WEBInstanceType" },
-        "Tags" : [ {"Key" : "Environment", "Value" : "Source"}, {"Key" : "Name", "Value" : "MID-Wordpress-DB" } ],
+        "Tags" : [ {"Key" : "Environment", "Value" : "Source"}, {"Key" : "Name", "Value" : "MID-OFBiz-DB" } ],
         "NetworkInterfaces" : [ {
                 "DeviceIndex" : "0",
                 "AssociatePublicIpAddress" : false,
@@ -280,14 +279,14 @@
               } ],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                        "#!/bin/bash -xe\n",
-                       "hostnamectl set-hostname wordpress-db.",{"Ref": "DomainName"},"\n",
+                       "hostnamectl set-hostname ofbiz-db.",{"Ref": "DomainName"},"\n",
                        "yum update -y\n",
-                       "amazon-linux-extras install lamp-mariadb10.2-php7.2 -y\n",
+                       "amazon-linux-extras install postgresql9.6 -y\n",
                        "yum update -y aws-cfn-bootstrap\n",
                        "/opt/aws/bin/cfn-init -v ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
                        "         --resource DBServer ",
-                       "         --configsets wordpress_install ",
+                       "         --configsets OFBiz_install ",
                        "         --region ", { "Ref" : "AWS::Region" }, "\n",
                        "/opt/aws/bin/cfn-signal -e $? ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
@@ -310,7 +309,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "wordpress_install" : ["install_cfn", "register_dns", "setup_ssh", "install_wordpress", "configure_wordpress" ]
+            "OFBiz_install" : ["install_cfn", "register_dns", "setup_ssh", "install_OFBiz" ]
           },
           "install_cfn" : {
             "files": {
@@ -332,7 +331,7 @@
                   "action=/opt/aws/bin/cfn-init -v ",
                           "         --stack ", { "Ref" : "AWS::StackName" },
                           "         --resource WebServer ",
-                          "         --configsets wordpress_install ",
+                          "         --configsets OFBiz_install ",
                           "         --region ", { "Ref" : "AWS::Region" }, "\n"
                 ]]},          
                 "mode"  : "000400",
@@ -411,58 +410,67 @@
             }
           },
 
-          "install_wordpress" : {
+          "install_OFBiz" : {
             "packages" : {
               "yum" : {
-                "php"            : [],
-                "mariadb"        : [],
-                "mariadb-devel"  : [],
-                "mariadb-libs"   : [],
-                "httpd"          : [],
-                "python3"        : []
+                "java-1.8.0-openjdk-devel" : [],
+                "java-1.8.0-openjdk"       : [],
+                "perl-Digest-SHA"          : [],
+                "python3"                  : []
               }
             },
             "sources" : {
-              "/var/www/html" : "http://wordpress.org/latest.tar.gz"
+              "/opt" : "http://mirrors.koehn.com/apache/ofbiz/apache-ofbiz-16.11.06.zip"
             },
             "files" : {
-              "/tmp/create-wp-config" : {
+              "/tmp/update_ofbiz_config.sh" : {
                 "content" : { "Fn::Join" : [ "", [
                   "#!/bin/bash -xe\n",
-                  "mv /var/www/html/wordpress/* /var/www/html/\n",
-                  "cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php\n",
-                  "sed -i \"s/'localhost'/'wordpress-db.",{ "Ref" : "DomainName" }, "'/g\" wp-config.php\n",
-                  "sed -i \"s/'database_name_here'/'",{ "Ref" : "DBName" }, "'/g\" wp-config.php\n",
-                  "sed -i \"s/'username_here'/'",{ "Ref" : "DBUser" }, "'/g\" wp-config.php\n",
-                  "sed -i \"s/'password_here'/'",{ "Ref" : "DBPassword" }, "'/g\" wp-config.php\n"
+                  "ofbizconfig=/opt/apache-ofbiz-16.11.06/framework/entity/config/entityengine.xml\n",
+                  "sed -i 's/datasource-name=\"localderbyolap\"/datasource-name=\"localpostolap\"/g' $ofbizconfig\n",
+                  "sed -i 's/datasource-name=\"localderbytenant\"/datasource-name=\"localposttenant\"/g' $ofbizconfig\n",
+                  "sed -i 's/datasource-name=\"localderby\"/datasource-name=\"localpostgres\"/g' $ofbizconfig\n",
+                  "sed -i 's/127.0.0.1/ofbiz-db.",{"Ref": "DomainName"},"/g' $ofbizconfig\n"
                 ]]},
+                "mode" : "000500",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/lib/systemd/system/ofbiz.service" : {
+                "content" : { "Fn::Join" : [ "", [
+                  "[Unit]\n",
+                  "Description=OFBiz Service Daemon\n",
+                  "After=network.target auditd.service\n",
+                  "[Service]\n",
+                  "WorkingDirectory=/opt/apache-ofbiz-16.11.06\n",
+                  "ExecStart=/opt/apache-ofbiz-16.11.06/gradlew loadDefault ofbiz\n",
+                  "ExecStop=/opt/apache-ofbiz-16.11.06/gradlew 'ofbiz --shutdown'\n"
+                  ]]},
                 "mode" : "000500",
                 "owner" : "root",
                 "group" : "root"
               }
             },
+            "commands" : {
+              "01_update_ofbiz_config" : {
+                "command" : "/tmp/update_ofbiz_config.sh"
+              },
+              "02_init_wrapper" : {
+                "command" : "gradle/init-gradle-wrapper.sh",
+                "cwd" : "/opt/apache-ofbiz-16.11.06"
+              },
+              "03_load_pg_plugin" : {
+                "command" : "./gradlew createPlugin -PpluginId=PostgressDemo",
+                "cwd" : "/opt/apache-ofbiz-16.11.06"
+              },
+              "04_add_pg_plugin" : {
+                "command" : "sed -i \"2i   pluginLibsRuntime 'postgresql:postgresql:9.0-801.jdbc4'\" /opt/apache-ofbiz-16.11.06/specialpurpose/PostgressDemo/build.gradle"
+              }
+            },
             "services" : {
               "sysvinit" : {
-                "httpd"  : { "enabled" : "true", "ensureRunning" : "true" }
+                "ofbiz" : { "enabled" : "true", "ensureRunning" : "true" }
               }
-            }
-          },
-
-          "configure_wordpress" : {
-            "commands" : {
-              "01_configure_wordpress" : {
-                "command" : "/tmp/create-wp-config",
-                "cwd" : "/var/www/html"
-              },
-              "04_setup_wordpress" : {
-                "command" : { "Fn::Join" : ["", 
-                                    [ "/usr/bin/curl -v --data-urlencode 'weblog_title=Migration Immersion Day' --data-urlencode 'user_name=admin' ",
-                                                     "--data-urlencode 'admin_password=",{ "Ref" : "RootPassword" },"' --data-urlencode 'admin_password2=",{ "Ref" : "RootPassword" },"' ",
-                                                     "--data-urlencode 'admin_email=admin@admin.com' --data-urlencode 'Submit=Install+WordPress' ",
-                                                     "http://wordpress-web.",{"Ref": "DomainName"},"/wp-admin/install.php?step=2" ]
-                ]}
-              }
-
             }
           }
         }
@@ -471,7 +479,7 @@
       "Properties": {
         "ImageId" : { "Ref" : "AWSRegionArch2AMI" },
         "InstanceType"   : { "Ref" : "WEBInstanceType" },
-        "Tags" : [ {"Key" : "Environment", "Value" : "Source"}, {"Key" : "Name", "Value" : "MID-Wordpress-WEB" } ],
+        "Tags" : [ {"Key" : "Environment", "Value" : "Source"}, {"Key" : "Name", "Value" : "MID-OFBiz-WEB" } ],
         "NetworkInterfaces" : [ {
                 "DeviceIndex" : "0",
                 "AssociatePublicIpAddress" : false,
@@ -480,14 +488,14 @@
               } ],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                        "#!/bin/bash -xe\n",
-                       "hostnamectl set-hostname wordpress-web.",{"Ref": "DomainName"},"\n",
+                       "hostnamectl set-hostname ofbiz-web.",{"Ref": "DomainName"},"\n",
                        "yum update -y\n",
-                       "amazon-linux-extras install lamp-mariadb10.2-php7.2 -y\n",
+                       "amazon-linux-extras install postgresql9.6 -y\n",
                        "yum update -y aws-cfn-bootstrap\n",
                        "/opt/aws/bin/cfn-init -v ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
                        "         --resource WebServer ",
-                       "         --configsets wordpress_install ",
+                       "         --configsets OFBiz_install ",
                        "         --region ", { "Ref" : "AWS::Region" }, "\n",
                        "/opt/aws/bin/cfn-signal -e $? ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
@@ -506,8 +514,8 @@
 
   "Outputs" : {
     "WebsiteURL" : {
-      "Value" : { "Fn::Join" : ["", ["http://wordpress-web.",{"Ref": "DomainName"}, "/" ]]},
-      "Description" : "WordPress Website"
+      "Value" : { "Fn::Join" : ["", ["https://OFBiz-web.",{"Ref": "DomainName"}, ":8443/accounting" ]]},
+      "Description" : "OFBiz Website"
     }
   }
 }

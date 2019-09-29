@@ -132,7 +132,22 @@
                   "c:\\cfn\\scripts\\installpython.ps1": {
                     "content": {
                       "Fn::Join": ["",[
-                        "Invoke-WebRequest \"https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe\" -OutFile c:\\python.exe; Start-Process c:\\python.exe -ArgumentList '/quiet' -Verb RunAs -Wait; Remove-Item c:\\python.exe"
+                        "Invoke-WebRequest \"https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe\" -OutFile c:\\python.exe; Start-Process c:\\python.exe -ArgumentList '/quiet' -Verb RunAs -Wait; Remove-Item c:\\python.exe \n",
+                        "[Environment]::SetEnvironmentVariable ;(\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python37-32\\\", $env:Path, [System.EnvironmentVariableTarget]::Machine) \n",
+                        "[Environment]::SetEnvironmentVariable ;(\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python37-32\\Scripts\\\", $env:Path, [System.EnvironmentVariableTarget]::Machine) \n",
+                        "py.exe -m pip install --upgrade pip \n",
+                        "py.exe -m pip install requests \n",
+                        "py.exe -m pip install paramiko \n",
+                        "py.exe -m pip install boto3 \n"
+                      ]]
+                    }
+                  },
+                  "c:\\cfn\\scripts\\installAWSps.ps1": {
+                    "content": {
+                      "Fn::Join": ["",[
+                        "Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force \n",
+                        "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted \n",
+                        "Install-Module -Name AWSPowerShell"
                       ]]
                     }
                   }
@@ -148,6 +163,10 @@
                   },
                   "3-installpython": {
                     "command": "powershell.exe c:\\cfn\\scripts\\installpython.ps1",
+                    "waitAfterCompletion": "5"
+                  },
+                  "4-installAWSps": {
+                    "command": "powershell.exe c:\\cfn\\scripts\\installAWSps.ps1",
                     "waitAfterCompletion": "5"
                   },
                   "4-signal": {
