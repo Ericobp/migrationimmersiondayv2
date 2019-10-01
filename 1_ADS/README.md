@@ -49,6 +49,6 @@ You will also need to get familiar with the servers to be migrated:
 
 ## [Next](./1_know_your_environment.md)
 
-✅ Proceed to the first part, [know your environment](./1_know_your_environment.md), wherein you'll connect to the source environment to be discovered.
+✅ Proceed to the first part, [know your environment](./README_ADS_MD/1_know_your_environment.md), wherein you'll connect to the source environment to be discovered.
 
 &nbsp;
