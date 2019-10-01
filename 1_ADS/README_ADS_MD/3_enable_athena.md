@@ -40,7 +40,7 @@ If at any time Data Exploration in Amazon Athena is requested to be enabled, ple
 
 &nbsp;
 
-## [Next](./README_ADS_MD/4_install_ads_agents.md)
+## [Next](.././README_ADS_MD/4_install_ads_agents.md)
 
 ✅ Proceed to the next step, [install ADS agents](.././README_ADS_MD/4_install_ads_agents.md), wherein you'll install ADS agents to the linux and windows VMs.
 
